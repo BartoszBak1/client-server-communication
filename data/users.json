@@ -1,0 +1,14 @@
+[
+    {
+        "username": "Frank",
+        "password": "1234",
+        "role": "user",
+        "unread_msgs": 2
+    },
+    {
+        "username": "Tom",
+        "password": "1234",
+        "role": "admin",
+        "unread_msgs": 0
+    }
+]
