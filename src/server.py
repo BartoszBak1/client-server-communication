@@ -6,12 +6,13 @@ from src.message_manager import MessageManager
 from src.database import Database
 
 class Server:
-    def __init__(self, host, port, version) -> None:
+    def __init__(self, host, port, version, config) -> None:
         self.host = host
         self.port = port
         self.version = version
+        self.config = config
         self.start_time = datetime.now()
-        self.db = Database()
+        self.db = Database(self.config)
         self.user_manager = UserManager(self.db)
         self.message_manager = MessageManager(self.db, self.user_manager)
         self.options = {
@@ -55,7 +56,6 @@ class Server:
 
                 while True:
                     data = self.receive_msg(conn)
-
                     if not data:
                         break
 
@@ -67,7 +67,7 @@ class Server:
                         self.send_msg(conn, msg = json.dumps(answer))
                     except KeyError:
                         self.send_msg(conn, msg = json.dumps('Wrong command')) 
-                                
+                            
 
     def uptime(self, *args, **kwargs):
 

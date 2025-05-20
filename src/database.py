@@ -1,112 +1,74 @@
-import json
-import os
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 class Database():
-    def __init__(self, database_path = "/Projects/zero_to_junior/backend/python_201/data") -> None:
-        self.database_path = database_path 
-        self.file_users = "users.json"
-        self.file_messages = "messages.json"
+    def __init__(self, config) -> None:
+        self.config = config 
+        self.conn = self.connect(config)
 
-    def save_data(self, path, file_name, data):
-        """Save data in json.
-
-        Args:
-            path (str): path to file
-            file_name (str): name of the file
-            data (json): data
-        """
-        with open(os.path.join(path, file_name), "w") as file:
-            json.dump(data, file)
-
-    def load_data(self, path, file_name):
-        """Load data from json file.
-
-        Args:
-            path (str): path to file
-            file_name (str): name of the file
-
-        Returns:
-            json: data from file
-        """
-        with open(os.path.join(path, file_name), "r") as file:
-            return json.load(file)
-        
-    def check_if_user_exist(self, users, username):
-        """Check if user exists in database.
-
-        Args:
-            users (dict): Dictionary with users.
-            username (str): Name of the user you are looking for.
-
-        Returns:
-            bool: True or False
-        """
-        for user in users:
-            if username == user["username"]:
-                return True
-        return False
-
-    def check_credentials(self, user, username, password):
-        """Check if username and password are correct.
-
-        Args:
-            user (str): user data
-            username (str): username from user
-            password (str): password from user
-
-        Returns:
-            bool: True or False
-        """
+    def connect(self, config):
+        """ Connect to the PostgreSQL database server """
         try:
-            if username == user["username"] and password == user["password"]:
-                return True
-            else:
-                return False
-        except TypeError:
-            return False   
-
-    def get_user_data(self, data, username):
-        """Get selected user's data from users's data.
+            # connecting to the PostgreSQL server
+            with psycopg2.connect(**config) as conn:
+                print('Connected to the PostgreSQL server.')
+                return conn
+        except (psycopg2.DatabaseError, Exception) as error:
+            print(error)
+            
+    def save_data(self, params:dict):
+ 
+        """Execute query.
 
         Args:
-            data (dict): all users's data
-            username (str): name of user
-
-        Returns:
-            dict: data of selected user
+            query (string): query
         """
-        for user in data:
-            if user['username'] == username:
-                return user
-            
-        return None
+        import src.queries as queries
+        query, values = getattr(queries, params['query'])(params['query_arguments'])
+
+        with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query, values)
+            self.conn.commit()
+
+    def get_data(self, params: dict):
+        """Get data from database.
+
+        Args:
+            query (str): query
+            params (dict): dictionary with parameters for query.
+        Returns:
+            _type_: data
+        """
+        import src.queries as queries
+
+        if params['query'] == "query_get_all_messages":
+            query, values = getattr(queries, params['query'])()
+        else:
+            query, values = getattr(queries, params['query'])(params['query_arguments'])
+
+        with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query, values)
+            data = cur.fetchall()
+            cur.close()
+        return data
     
-    def get_user_msgs_from_inbox(self, data, username):
-        """Get messages of user from inbox.
+    def check_data(self, params: dict):
+        """Check data if exist.
 
         Args:
-            data (dict): dictionary with all messages
-            username (str): name of user
+            query (str): query
+            params (dict): {query: query_name, query_arguments: dict} dictionary with parameters for query.
 
         Returns:
-            list: messages of user
+            bool: True if exist or False if not
         """
-        msgs = []
-        for msg in data:
-            if msg['receiver'] == username:
-                msgs.append({'sender': msg['sender'], 'message': msg['message']})
-            
-        return msgs
+        import src.queries as queries
 
-    def update_unread_msgs(self, users, username, new_count):
+        query, values = getattr(queries, params['query'])(params['query_arguments'])
 
-        """Update number of unread messages.
+        with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(query, values)
+            data = cur.fetchone()
 
-        Returns:
-            bool: True or False
-        """
-        for user in users:
-            if user['username'] == username:
-               user['unread_msgs'] = new_count
-               return True
-        return False
+            cur.close()
+        return data is not None

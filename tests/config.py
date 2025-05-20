@@ -1,11 +1,4 @@
-from src.server import Server
 from configparser import ConfigParser
-
-HOST = "127.0.0.1"  # The server's hostname or IP address
-PORT = 65432  # The port used by the server
-VERSION = '0.0.1'
-
-
 
 def load_config(filename='database.ini', section='postgresql'):
     parser = ConfigParser()
@@ -21,8 +14,3 @@ def load_config(filename='database.ini', section='postgresql'):
         raise Exception('Section {0} not found in the {1} file'.format(section, filename))
 
     return config
-
-if __name__ == '__main__':
-    config = load_config()
-    server = Server(HOST, PORT, VERSION, config)
-    server.start_server()

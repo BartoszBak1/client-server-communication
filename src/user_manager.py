@@ -26,14 +26,11 @@ class UserManager():
         if role not in ['user', 'admin']:
             return {"status": "failure", 'message': 'Wrong role. Select user or admin.'}
         
-        data = self.db.load_data(self.db.database_path, self.db.file_users)
-
-        if self.db.check_if_user_exist(data, username):
+        if self.db.check_data({"query": "query_check_if_user_exist", "query_arguments": {"username": username}}) == True:
             return {"status": "failure", "message": f"User with that name already exist."}
         else:
             user = User(username, password, role)
-            data.append(user.__dict__)
-            self.db.save_data(self.db.database_path, self.db.file_users, data)
+            self.db.save_data({"query": "query_insert_user", "query_arguments": user.__dict__})
             return {"status": "success", "message": f"You have created new account named {username}."}
 
     def login(self, **kwargs):
@@ -48,14 +45,12 @@ class UserManager():
         """
         username = kwargs.get('username')
         password = kwargs.get('password')
-        data = self.db.load_data(self.db.database_path, self.db.file_users)
-        
+
         if self.logged_in_user is not None:
             return {"status": "failure", "message": f"You are logged in as {self.logged_in_user}."}
-
-        user = self.db.get_user_data(data, username)
         
-        if  self.db.check_credentials(user, username, password):
+        if self.db.check_data({"query": "query_check_user_credentials", "query_arguments": {"username": username, 'password': password}}):
+            user = self.db.get_data({"query": "query_get_user_data", "query_arguments": {"username": username}})[0]
             self.logged_in_user = username
             self.logged_in_role = user['role']
             return {"status": "success", "message": f"User {username} logged in."}

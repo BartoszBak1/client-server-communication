@@ -23,25 +23,21 @@ class MessageManager():
         if len(msg_content) > 255:
             return {"status": "failure", "message": "Message is to long."}
         
-        users = self.db.load_data(self.db.database_path, self.db.file_users)
-        user = self.db.get_user_data(users, recipient)
-        if user is None:
+        if self.db.check_data({"query": "query_check_if_user_exist", "query_arguments": {"username": recipient}}) == False:
             return {"status": "failure", "message": f"There is no such user like {recipient}."}
         
+        user = self.db.get_data({"query": "query_get_user_data", "query_arguments": {"username": recipient}})[0]
         unread_msgs = user['unread_msgs']
         if unread_msgs >= 5:
                     return {"status": "failure", "message": "Inbox is full."}        
 
         # save message
-        message = Message(self.user_manager.get_logged_in_user(), recipient, msg_content)    
-        messages = self.db.load_data(self.db.database_path, self.db.file_messages)
-        messages.append(message.__dict__)
-        self.db.save_data(self.db.database_path, self.db.file_messages, messages) 
+        message = Message(self.user_manager.get_logged_in_user(), recipient, msg_content)
+        self.db.save_data({"query": "query_insert_message", "query_arguments": message.__dict__})
 
         # update inbox
         unread_msgs = unread_msgs + 1
-        self.db.update_unread_msgs(users, recipient, unread_msgs)
-        self.db.save_data(self.db.database_path, self.db.file_users, users) 
+        self.db.save_data({"query": "query_update_unread_msgs", "query_arguments": {'unread_msgs': unread_msgs, 'username': recipient}})
 
         return {"status": "success", "message": f"The message has been sent to {recipient}."}
 
@@ -55,18 +51,15 @@ class MessageManager():
         if not self.user_manager.is_logged_in():
             return {"status": "failure", "message": "No user is currently logged in."}
         
-        messages = self.db.load_data(self.db.database_path, self.db.file_messages)
-        user_msgs = self.db.get_user_msgs_from_inbox( messages, self.user_manager.get_logged_in_user())
-        
+        user_msgs = self.db.get_data({"query": "query_get_user_messages", "query_arguments": {'receiver': self.user_manager.get_logged_in_user()}})
+        print(user_msgs)
         if len(user_msgs) == 0 and self.user_manager.get_logged_in_role() == 'user':
             return {"message": "You don't have any messages."}
         else:
-            # update user data
-            users = self.db.load_data(self.db.database_path, self.db.file_users)
-            self.db.update_unread_msgs(users, self.user_manager.get_logged_in_user(), 0)
-            self.db.save_data(self.db.database_path, self.db.file_users, users)
+            self.db.save_data({"query": "query_update_unread_msgs", "query_arguments": {'unread_msgs': 0, 'username': self.user_manager.get_logged_in_user()}})
 
             if self.user_manager.get_logged_in_role() == 'admin':
+                messages = self.db.get_data({"query": "query_get_all_messages", "query_arguments": {}})
                 return messages
             else:
                 return user_msgs
